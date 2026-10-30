@@ -1,5 +1,4 @@
 """Three-view QA dashboard for Streamlit in Snowflake. All data are synthetic."""
-import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from snowflake.snowpark.context import get_active_session

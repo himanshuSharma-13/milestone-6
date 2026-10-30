@@ -34,9 +34,9 @@ CREATE OR REPLACE TASK STAGING.REFRESH_ACTIVITY WAREHOUSE = PIP_WH
 AS
 MERGE INTO STAGING.ACTIVITY_LATEST t
 USING (
- SELECT case_id,component,activity,points,source_file,source_row
+ SELECT case_id,component,activity,points,source_file,source_row,loaded_at
  FROM RAW.ACTIVITY_STREAM
- QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id,component,activity ORDER BY source_row DESC)=1
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id,component,activity ORDER BY loaded_at DESC,source_row DESC)=1
 ) s ON t.case_id=s.case_id AND t.component=s.component AND t.activity=s.activity
 WHEN MATCHED THEN UPDATE ALL BY NAME
 WHEN NOT MATCHED THEN INSERT ALL BY NAME;
@@ -53,9 +53,9 @@ MERGE INTO STAGING.PEOPLE_LATEST t
 USING (
  SELECT case_id,claimant_id,claimant_name,ni_number,date_of_birth,
   health_condition,assessor_id,assessor_name,team_id,region,valid_from,
-  source_file,source_row
+  source_file,source_row,loaded_at
  FROM RAW.PEOPLE_STREAM
- QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY source_row DESC)=1
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC,source_row DESC)=1
 ) s ON t.case_id=s.case_id
 WHEN MATCHED THEN UPDATE ALL BY NAME
 WHEN NOT MATCHED THEN INSERT ALL BY NAME;
@@ -66,7 +66,7 @@ CREATE OR REPLACE VIEW STAGING.ACTIVITY AS
 SELECT case_id, component, activity, TRY_TO_NUMBER(points) AS points
 FROM STAGING.ACTIVITY_LATEST
 QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id, component, activity
-  ORDER BY source_row DESC) = 1;
+  ORDER BY loaded_at DESC, source_row DESC) = 1;
 
 CREATE OR REPLACE VIEW STAGING.PEOPLE AS
 SELECT case_id, claimant_id, claimant_name, ni_number,
@@ -74,7 +74,7 @@ SELECT case_id, claimant_id, claimant_name, ni_number,
   assessor_id, assessor_name, team_id, region,
   TRY_TO_DATE(valid_from) AS valid_from
 FROM STAGING.PEOPLE_LATEST
-QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY source_row DESC) = 1;
+QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC, source_row DESC) = 1;
 
 CREATE OR REPLACE VIEW STAGING.CASES_STANDARDIZED AS
 WITH normalized AS (

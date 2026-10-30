@@ -15,7 +15,7 @@ USE DATABASE PIP_QUALITY;
 USE WAREHOUSE PIP_WH;
 CREATE FILE FORMAT IF NOT EXISTS RAW.CSV_FMT TYPE = CSV SKIP_HEADER = 1
   FIELD_OPTIONALLY_ENCLOSED_BY = '"' NULL_IF = ('');
-CREATE STAGE IF NOT EXISTS RAW.INPUT_STAGE FILE_FORMAT = RAW.CSV_FMT;
+CREATE STAGE IF NOT EXISTS RAW.INPUT_STAGE FILE_FORMAT = (FORMAT_NAME = 'PIP_QUALITY.RAW.CSV_FMT');
 
 -- COPY is simpler and cheaper than Snowpipe for a three-file, interview-size batch.
 -- Upload first with SnowSQL: PUT file://<absolute-path>/data/*.csv @RAW.INPUT_STAGE AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS RAW.CASES (
 );
 CREATE TABLE IF NOT EXISTS RAW.ACTIVITY_SCORES (
   case_id VARCHAR, component VARCHAR, activity VARCHAR, points VARCHAR,
-  source_file VARCHAR, source_row NUMBER
+  source_file VARCHAR, source_row NUMBER, loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 CREATE TABLE IF NOT EXISTS RAW.PEOPLE (
   case_id VARCHAR, claimant_id VARCHAR, claimant_name VARCHAR, ni_number VARCHAR,
   date_of_birth VARCHAR, health_condition VARCHAR, assessor_id VARCHAR,
   assessor_name VARCHAR, team_id VARCHAR, region VARCHAR, valid_from VARCHAR,
-  source_file VARCHAR, source_row NUMBER
+  source_file VARCHAR, source_row NUMBER, loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 
 -- Streams must exist before COPY so the first batch is visible to the tasks.
