@@ -1,0 +1,65 @@
+{
+  "source": "local Python mirror of generated CSVs; Snowflake execution unverified",
+  "quality": {
+    "raw_rows": 3232,
+    "distinct_cases": 3200,
+    "raw_duplicate_case_ids": 32,
+    "raw_missing_assessment_dates": 68,
+    "raw_decisions_before_referral": 30,
+    "quarantine_by_reason": {
+      "POINTS_MISMATCH": 73,
+      "MISSING_DATE": 68,
+      "DATE_ORDER": 30
+    },
+    "curated_cases": 3029,
+    "curated_duplicate_case_ids": 0,
+    "curated_invalid_dates": 0,
+    "curated_invalid_labels": 0
+  },
+  "audit_sample": {
+    "month": "2026-10-01",
+    "eligible": 55,
+    "selected": 42,
+    "high_risk_selected": 30
+  },
+  "role_test_expected": {
+    "admin_cases": 3029,
+    "qa_cases": 3029,
+    "team_a_cases": 1487,
+    "team_b_cases": 1542
+  },
+  "region_fairness": {
+    "East": {
+      "n": 730,
+      "raw_daily_living_award_rate": 0.7863,
+      "condition_standardized_rate": 0.8013,
+      "mental_health_share": 0.3178
+    },
+    "North": {
+      "n": 688,
+      "raw_daily_living_award_rate": 0.8765,
+      "condition_standardized_rate": 0.8081,
+      "mental_health_share": 0.686
+    },
+    "South": {
+      "n": 736,
+      "raw_daily_living_award_rate": 0.7582,
+      "condition_standardized_rate": 0.8039,
+      "mental_health_share": 0.2079
+    },
+    "West": {
+      "n": 713,
+      "raw_daily_living_award_rate": 0.7882,
+      "condition_standardized_rate": 0.7997,
+      "mental_health_share": 0.3366
+    }
+  },
+  "scorecard_heldout": {
+    "heldout_n": 160,
+    "precision": 0.0556,
+    "recall": 0.0455,
+    "mean_predicted": 0.1434,
+    "observed_rate": 0.1375
+  },
+  "band_exceptions": 50
+}
