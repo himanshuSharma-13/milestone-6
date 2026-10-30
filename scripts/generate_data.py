@@ -30,7 +30,7 @@ for n in range(1, 3201):
     claimant_id = f"P{n:05d}"
     referral = start + timedelta(days=R.randrange(628))
     assessment = referral + timedelta(days=R.randrange(2, 25))
-    decision = assessment + timedelta(days=R.randrange(1, 18))
+    decision = min(date(2026, 10, 30), assessment + timedelta(days=R.randrange(1, 18)))
     region = R.choice(REGIONS)
     assessment_type = R.choice(TYPES)
     condition = R.choices(CONDITIONS,

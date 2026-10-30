@@ -13,6 +13,13 @@ UNION ALL SELECT 'points_mismatch',COUNT(*) FROM STAGING.QUARANTINE
  WHERE quarantine_reason='POINTS_MISMATCH'
 UNION ALL SELECT 'duplicate_fact_case',COUNT(*) FROM (
  SELECT case_id FROM CORE.FACT_CASE GROUP BY 1 HAVING COUNT(*)>1)
+UNION ALL SELECT 'curated_points_mismatch',COUNT(*) FROM (
+ SELECT f.case_id FROM CORE.FACT_CASE f JOIN (
+  SELECT case_id, SUM(IFF(component='DL',points,0)) dl_sum,
+   SUM(IFF(component='MOB',points,0)) mob_sum
+  FROM CORE.FACT_ACTIVITY_SCORE GROUP BY case_id
+ ) a ON f.case_id=a.case_id
+ WHERE f.dl_points<>a.dl_sum OR f.mob_points<>a.mob_sum)
 UNION ALL SELECT 'invalid_curated_dates',COUNT(*) FROM CORE.FACT_CASE
  WHERE assessment_date IS NULL OR (status='CLOSED' AND decision_date IS NULL)
  OR decision_date<referral_date;

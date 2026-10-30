@@ -117,6 +117,35 @@ model = {"heldout_n":len(heldout), "precision": round(tp/pred,4) if pred else No
          "recall":round(tp/actual,4) if actual else None,
          "mean_predicted":round(sum(map(score,heldout))/len(heldout),4),
          "observed_rate":round(actual/len(heldout),4)}
+calibration = []
+for lower in (0.0, 0.2, 0.4, 0.6, 0.8):
+    bucket = [c for c in heldout if lower <= score(c) < lower + 0.2]
+    if bucket:
+        calibration.append({"bucket_start":lower,"n":len(bucket),
+          "mean_predicted":round(sum(map(score,bucket))/len(bucket),4),
+          "observed_rate":round(sum(c["mr_overturned"] == "1" or c["appeal_overturned"] == "1" for c in bucket)/len(bucket),4)})
+
+cells = defaultdict(list)
+for c in closed:
+    cells[(c["assessment_type"],c["condition_category"])].append(c)
+cell_rate = {key:rate(group) for key,group in cells.items()}
+assessors = defaultdict(list)
+for c in closed:
+    assessors[c["assessor_id"]].append(c)
+funnel = []
+for assessor, group in sorted(assessors.items()):
+    n = len(group); observed = sum(c["dl_decision"] != "NO_AWARD" for c in group)
+    expected = sum(cell_rate[(c["assessment_type"],c["condition_category"])] for c in group)
+    variance = sum((p:=cell_rate[(c["assessment_type"],c["condition_category"])])*(1-p) for c in group)
+    funnel.append({"assessor_id":assessor,"n":n,"observed_rate":round(observed/n,4),
+      "expected_rate":round(expected/n,4),"lower_95":round(max(0,(expected-1.96*math.sqrt(variance))/n),4),
+      "upper_95":round(min(1,(expected+1.96*math.sqrt(variance))/n),4),
+      "lower_998":round(max(0,(expected-3.09*math.sqrt(variance))/n),4),
+      "upper_998":round(min(1,(expected+3.09*math.sqrt(variance))/n),4),
+      "outside_998":int(abs(observed-expected)>3.09*math.sqrt(variance))})
+with (OUT / "local_funnel_example.csv").open("w",newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=funnel[0].keys())
+    writer.writeheader(); writer.writerows(funnel)
 evidence = {"source":"local Python mirror of generated CSVs; Snowflake execution unverified",
             "quality":quality, "audit_sample":{"month":str(month),"eligible":len(eligible),"selected":len(sample),
             "high_risk_selected":sum(x["risk_flag"] for x in sample)},
@@ -124,6 +153,8 @@ evidence = {"source":"local Python mirror of generated CSVs; Snowflake execution
               "team_a_cases":sum(c["team_id"] == "TEAM_A" for c in valid),
               "team_b_cases":sum(c["team_id"] == "TEAM_B" for c in valid)},
             "region_fairness":region_rates,"scorecard_heldout":model,
+            "scorecard_calibration":calibration,
+            "funnel_outside_998":sum(x["outside_998"] for x in funnel),
             "band_exceptions":sum(c["band_exception"] for c in closed)}
 (OUT / "local_results.json").write_text(json.dumps(evidence,indent=2)+"\n")
 print(json.dumps(evidence,indent=2))

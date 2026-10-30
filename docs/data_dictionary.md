@@ -23,5 +23,6 @@
 | `MART.AT_RISK_CASES` | open case | days open and days to target | Caseload review |
 | `MART.ASSESSOR_QUALITY` | assessor, team | mean QA score and exception rate | Human QA review |
 | `MART.FUNNEL` | assessor | observed/expected rate and 95%/99.8% limits | Case-mix adjusted consistency |
+| `MART.FAIRNESS_COMPARE` | group type and value | count and daily-living award rate | Assessor, region, type, age and condition comparisons |
 | `MART.AUDIT_SAMPLE` | month, case | strata, risk, seed, rationale, run date | Immutable-by-procedure QA draw |
 | `MART.OVERTURN_SCORECARD` | challenged case | score and observed outcome | Transparent QA triage |

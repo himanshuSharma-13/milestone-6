@@ -61,5 +61,20 @@
     "mean_predicted": 0.1434,
     "observed_rate": 0.1375
   },
+  "scorecard_calibration": [
+    {
+      "bucket_start": 0.0,
+      "n": 141,
+      "mean_predicted": 0.1241,
+      "observed_rate": 0.1489
+    },
+    {
+      "bucket_start": 0.2,
+      "n": 19,
+      "mean_predicted": 0.2863,
+      "observed_rate": 0.0526
+    }
+  ],
+  "funnel_outside_998": 0,
   "band_exceptions": 50
 }

@@ -47,6 +47,21 @@ SELECT assessor_id, region, COUNT(*) cases, SUM(band_exception) exceptions,
  AVG(band_exception) exception_rate
 FROM CORE.FACT_CASE GROUP BY 1,2;
 
+CREATE OR REPLACE VIEW MART.FAIRNESS_COMPARE AS
+WITH base AS (
+ SELECT f.case_id, f.assessor_id, f.region, f.assessment_type,
+  f.condition_category, d.age_band,
+  IFF(f.dl_decision='NO_AWARD',0,1) daily_living_awarded
+ FROM CORE.FACT_CASE f JOIN CORE.DIM_CLAIMANT d ON f.claimant_key=d.claimant_key
+ WHERE f.status='CLOSED'
+)
+SELECT 'ASSESSOR' group_type, assessor_id group_value, COUNT(*) n,
+ AVG(daily_living_awarded) award_rate FROM base GROUP BY assessor_id
+UNION ALL SELECT 'REGION',region,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY region
+UNION ALL SELECT 'ASSESSMENT_TYPE',assessment_type,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY assessment_type
+UNION ALL SELECT 'AGE_BAND',age_band,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY age_band
+UNION ALL SELECT 'CONDITION_CATEGORY',condition_category,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY condition_category;
+
 -- Overall rates are adjusted for observed assessment type and condition mix.
 -- These are descriptive control limits, not assessor performance judgments.
 CREATE OR REPLACE VIEW MART.FUNNEL AS

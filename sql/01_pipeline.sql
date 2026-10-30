@@ -11,7 +11,11 @@ CREATE OR REPLACE TASK STAGING.REFRESH_CASES WAREHOUSE = PIP_WH
 AS
 MERGE INTO STAGING.CASES_LATEST t
 USING (
-  SELECT * EXCLUDE (METADATA$ACTION, METADATA$ISUPDATE, METADATA$ROW_ID)
+  SELECT case_id,claimant_id,assessor_id,region,assessment_type,
+    referral_date,assessment_date,decision_date,dl_points,mob_points,
+    dl_decision,mob_decision,mr_flag,mr_overturned,appeal_flag,
+    appeal_overturned,status,audit_quality_score,narrative_words,
+    condition_category,source_type,source_file,source_row,loaded_at
   FROM RAW.CASES_STREAM
   QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC, source_row DESC) = 1
 ) s ON t.case_id = s.case_id
@@ -30,7 +34,7 @@ CREATE OR REPLACE TASK STAGING.REFRESH_ACTIVITY WAREHOUSE = PIP_WH
 AS
 MERGE INTO STAGING.ACTIVITY_LATEST t
 USING (
- SELECT * EXCLUDE (METADATA$ACTION, METADATA$ISUPDATE, METADATA$ROW_ID)
+ SELECT case_id,component,activity,points,source_file,source_row
  FROM RAW.ACTIVITY_STREAM
  QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id,component,activity ORDER BY source_row DESC)=1
 ) s ON t.case_id=s.case_id AND t.component=s.component AND t.activity=s.activity
@@ -47,7 +51,9 @@ CREATE OR REPLACE TASK STAGING.REFRESH_PEOPLE WAREHOUSE = PIP_WH
 AS
 MERGE INTO STAGING.PEOPLE_LATEST t
 USING (
- SELECT * EXCLUDE (METADATA$ACTION, METADATA$ISUPDATE, METADATA$ROW_ID)
+ SELECT case_id,claimant_id,claimant_name,ni_number,date_of_birth,
+  health_condition,assessor_id,assessor_name,team_id,region,valid_from,
+  source_file,source_row
  FROM RAW.PEOPLE_STREAM
  QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY source_row DESC)=1
 ) s ON t.case_id=s.case_id
