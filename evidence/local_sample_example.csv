@@ -1,6 +1,6 @@
 sample_month,case_id,region,assessment_type,outcome,risk_flag,rationale,seed
 2026-10-01,C01726,West,telephone,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
-2026-10-01,C00090,West,video,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
+2026-10-01,C00090,West,video,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C00135,West,telephone,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C00227,West,paper,NO_AWARD,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C00378,West,telephone,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1
@@ -22,22 +22,24 @@ sample_month,case_id,region,assessment_type,outcome,risk_flag,rationale,seed
 2026-10-01,C01453,South,telephone,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C02684,North,paper,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C01610,South,paper,NO_AWARD,0,10% base stratum,PIP_AUDIT_V1
-2026-10-01,C01620,South,face-to-face,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1
+2026-10-01,C01620,South,face-to-face,NO_AWARD,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C01668,South,video,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C01764,South,paper,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C01831,North,paper,NO_AWARD,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C01850,East,video,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1
+2026-10-01,C01852,South,face-to-face,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C01869,South,telephone,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
+2026-10-01,C01871,West,video,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C01876,North,telephone,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02050,South,paper,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02172,East,paper,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02217,West,paper,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
-2026-10-01,C02330,North,paper,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02523,South,video,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02526,West,face-to-face,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02732,West,face-to-face,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C02901,West,face-to-face,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C02810,North,face-to-face,ENHANCED,1,20% high-risk stratum,PIP_AUDIT_V1
+2026-10-01,C02843,North,telephone,ENHANCED,0,10% base stratum,PIP_AUDIT_V1
 2026-10-01,C03037,East,paper,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C03130,South,face-to-face,STANDARD,1,20% high-risk stratum,PIP_AUDIT_V1
 2026-10-01,C03180,East,paper,NO_AWARD,1,20% high-risk stratum,PIP_AUDIT_V1

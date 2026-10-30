@@ -13,4 +13,4 @@
 | 8:00–9:00 | Scorecard and fairness note | Poor held-out model metrics, raw vs standardized region rates. |
 | 9:00–10:00 | README cost/retention | X-Small warehouse, monitor, access history, deletion process, next steps. |
 
-Before recording: run the Snowflake scripts, capture real quality and role-test output, and refresh the app. If a trial account is unavailable, present the checked-in local evidence and explicitly say Snowflake execution has not been verified.
+Before recording: review the checked-in live Snowflake counts and role-test evidence, export the remaining detailed metrics, and create and open the Streamlit app. State clearly which results are local mirrors and which were observed in Snowflake.

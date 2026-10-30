@@ -73,7 +73,7 @@ month = date(2026, 10, 1)
 eligible = [c for c in closed if c["decision_date"].startswith("2026-10")]
 strata = defaultdict(list)
 for c in eligible:
-    risk = int(any(abs(int(c["dl_points"]) - x) <= 2 or abs(int(c["mob_points"]) - x) <= 2 for x in (8,12))
+    risk = int(any(abs(int(c["dl_points"]) - x) <= 2 for x in (8,12))
                or c["band_exception"] or int(c["narrative_words"]) < 40 or c["turnaround_days"] > 40)
     strata[(c["region"],c["assessment_type"],c["dl_decision"],risk)].append(c)
 sample = []
@@ -146,7 +146,7 @@ for assessor, group in sorted(assessors.items()):
 with (OUT / "local_funnel_example.csv").open("w",newline="") as f:
     writer = csv.DictWriter(f, fieldnames=funnel[0].keys())
     writer.writeheader(); writer.writerows(funnel)
-evidence = {"source":"local Python mirror of generated CSVs; Snowflake execution unverified",
+evidence = {"source":"local Python mirror of generated CSVs; Snowflake aggregate counts and role tests verified separately",
             "quality":quality, "audit_sample":{"month":str(month),"eligible":len(eligible),"selected":len(sample),
             "high_risk_selected":sum(x["risk_flag"] for x in sample)},
             "role_test_expected":{"admin_cases":len(valid),"qa_cases":len(valid),

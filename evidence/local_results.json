@@ -1,5 +1,5 @@
 {
-  "source": "local Python mirror of generated CSVs; Snowflake execution unverified",
+  "source": "local Python mirror of generated CSVs; Snowflake aggregate counts and role tests verified separately",
   "quality": {
     "raw_rows": 3232,
     "distinct_cases": 3200,
@@ -19,8 +19,8 @@
   "audit_sample": {
     "month": "2026-10-01",
     "eligible": 55,
-    "selected": 42,
-    "high_risk_selected": 30
+    "selected": 44,
+    "high_risk_selected": 28
   },
   "role_test_expected": {
     "admin_cases": 3029,
