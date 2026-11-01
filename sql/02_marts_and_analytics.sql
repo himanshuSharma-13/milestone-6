@@ -1,26 +1,23 @@
 USE DATABASE PIP_QUALITY;
 USE WAREHOUSE PIP_WH;
 
-CREATE OR REPLACE VIEW MART.COMPONENT_OUTCOMES AS
-SELECT case_id, assessor_id, team_id, region, assessment_type, condition_category,
- referral_date, decision_date, turnaround_days, mr_flag, mr_overturned,
- appeal_flag, appeal_overturned, audit_quality_score, narrative_words,
- band_exception, status, 'DAILY_LIVING' component, dl_points points, dl_decision award_level
-FROM CORE.FACT_CASE WHERE status='CLOSED'
-UNION ALL
-SELECT case_id, assessor_id, team_id, region, assessment_type, condition_category,
- referral_date, decision_date, turnaround_days, mr_flag, mr_overturned,
- appeal_flag, appeal_overturned, audit_quality_score, narrative_words,
- band_exception, status, 'MOBILITY', mob_points, mob_decision
-FROM CORE.FACT_CASE WHERE status='CLOSED';
-
+-- Expand each closed case to its two components only inside this KPI query.
 CREATE OR REPLACE VIEW MART.AWARD_RATES AS
+WITH outcomes AS (
+ SELECT assessor_id, region, assessment_type, turnaround_days,
+  'DAILY_LIVING' component, dl_points points, dl_decision award_level
+ FROM CORE.FACT_CASE WHERE status='CLOSED'
+ UNION ALL
+ SELECT assessor_id, region, assessment_type, turnaround_days,
+  'MOBILITY', mob_points, mob_decision
+ FROM CORE.FACT_CASE WHERE status='CLOSED'
+)
 SELECT component, award_level, region, assessor_id, assessment_type,
  COUNT(*) AS cases, COUNT(*) / NULLIF(SUM(COUNT(*)) OVER
    (PARTITION BY component,region,assessor_id,assessment_type),0) AS award_rate,
  AVG(points) AS avg_points, MEDIAN(turnaround_days) AS median_turnaround_days,
  PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY turnaround_days) AS p90_turnaround_days
-FROM MART.COMPONENT_OUTCOMES GROUP BY 1,2,3,4,5;
+FROM outcomes GROUP BY 1,2,3,4,5;
 
 CREATE OR REPLACE VIEW MART.OVERTURN_RATES AS
 SELECT 'MANDATORY_RECONSIDERATION' stage, SUM(mr_overturned) overturned,
@@ -37,45 +34,27 @@ SELECT case_id, assessor_id, team_id, region, assessment_type, referral_date,
 FROM CORE.FACT_CASE WHERE status='OPEN'
  AND DATEDIFF('DAY',referral_date,CURRENT_DATE()) >= 35;
 
-CREATE OR REPLACE VIEW MART.ASSESSOR_QUALITY AS
-SELECT assessor_id, team_id, COUNT(*) cases, AVG(audit_quality_score) avg_audit_quality_score,
- AVG(band_exception) band_exception_rate
+-- One summary covers audit quality by assessor and band exceptions by assessor/region.
+CREATE OR REPLACE VIEW MART.ASSESSOR_REVIEW AS
+SELECT assessor_id, region, COUNT(*) cases,
+ AVG(audit_quality_score) avg_audit_quality_score,
+ SUM(band_exception) exceptions, AVG(band_exception) exception_rate
 FROM CORE.FACT_CASE GROUP BY 1,2;
-
-CREATE OR REPLACE VIEW MART.CONSISTENCY_EXCEPTIONS AS
-SELECT assessor_id, region, COUNT(*) cases, SUM(band_exception) exceptions,
- AVG(band_exception) exception_rate
-FROM CORE.FACT_CASE GROUP BY 1,2;
-
-CREATE OR REPLACE VIEW MART.FAIRNESS_COMPARE AS
-WITH base AS (
- SELECT f.case_id, f.assessor_id, f.region, f.assessment_type,
-  f.condition_category, d.age_band,
-  IFF(f.dl_decision='NO_AWARD',0,1) daily_living_awarded
- FROM CORE.FACT_CASE f JOIN CORE.DIM_CLAIMANT d ON f.claimant_key=d.claimant_key
- WHERE f.status='CLOSED'
-)
-SELECT 'ASSESSOR' group_type, assessor_id group_value, COUNT(*) n,
- AVG(daily_living_awarded) award_rate FROM base GROUP BY assessor_id
-UNION ALL SELECT 'REGION',region,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY region
-UNION ALL SELECT 'ASSESSMENT_TYPE',assessment_type,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY assessment_type
-UNION ALL SELECT 'AGE_BAND',age_band,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY age_band
-UNION ALL SELECT 'CONDITION_CATEGORY',condition_category,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY condition_category;
 
 -- Overall rates are adjusted for observed assessment type and condition mix.
 -- These are descriptive control limits, not assessor performance judgments.
 CREATE OR REPLACE VIEW MART.FUNNEL AS
 WITH cells AS (
- SELECT assessment_type, condition_category, AVG(IFF(award_level='NO_AWARD',0,1)) p
- FROM MART.COMPONENT_OUTCOMES WHERE component='DAILY_LIVING'
+ SELECT assessment_type, condition_category, AVG(IFF(dl_decision='NO_AWARD',0,1)) p
+ FROM CORE.FACT_CASE WHERE status='CLOSED'
  GROUP BY 1,2
 ), per_assessor AS (
  SELECT o.assessor_id, COUNT(*) n,
-  SUM(IFF(o.award_level='NO_AWARD',0,1)) observed_awards,
+  SUM(IFF(o.dl_decision='NO_AWARD',0,1)) observed_awards,
   SUM(c.p) expected_awards, SUM(c.p*(1-c.p)) binomial_variance
- FROM MART.COMPONENT_OUTCOMES o JOIN cells c
+ FROM CORE.FACT_CASE o JOIN cells c
   ON o.assessment_type=c.assessment_type AND o.condition_category=c.condition_category
- WHERE o.component='DAILY_LIVING' GROUP BY 1
+ WHERE o.status='CLOSED' GROUP BY 1
 )
 SELECT assessor_id, n, observed_awards/n observed_rate, expected_awards/n expected_rate,
  GREATEST(0,(expected_awards-1.96*SQRT(binomial_variance))/n) lower_95,
@@ -98,22 +77,6 @@ SELECT case_id, assessor_id, region, assessment_type, condition_category,
   + IFF(turnaround_days>40,0.10,0)
   + IFF(band_exception=1,0.20,0)) AS risk_probability
 FROM CORE.FACT_CASE WHERE mr_flag=1 OR appeal_flag=1;
-
-CREATE OR REPLACE VIEW MART.MODEL_EVALUATION AS
-WITH heldout AS (
- SELECT *, IFF(risk_probability>=0.25,1,0) prediction
- FROM MART.OVERTURN_SCORECARD WHERE MOD(ABS(HASH(case_id)),5)=0
-)
-SELECT COUNT(*) heldout_n,
- SUM(IFF(prediction=1 AND overturned=1,1,0)) / NULLIF(SUM(prediction),0) precision,
- SUM(IFF(prediction=1 AND overturned=1,1,0)) / NULLIF(SUM(overturned),0) recall,
- AVG(risk_probability) mean_predicted, AVG(overturned) observed_rate
-FROM heldout;
-CREATE OR REPLACE VIEW MART.MODEL_CALIBRATION AS
-SELECT FLOOR(risk_probability*5)/5 AS probability_bucket, COUNT(*) n,
- AVG(risk_probability) mean_predicted, AVG(overturned) observed_rate
-FROM MART.OVERTURN_SCORECARD WHERE MOD(ABS(HASH(case_id)),5)=0
-GROUP BY 1;
 
 CREATE TABLE IF NOT EXISTS MART.AUDIT_SAMPLE (
  sample_month DATE, case_id VARCHAR, region VARCHAR, assessment_type VARCHAR,

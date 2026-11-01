@@ -40,11 +40,6 @@ CREATE TABLE IF NOT EXISTS RAW.PEOPLE (
   source_file VARCHAR, source_row NUMBER, loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 
--- Streams must exist before COPY so the first batch is visible to the tasks.
-CREATE STREAM IF NOT EXISTS RAW.CASES_STREAM ON TABLE RAW.CASES APPEND_ONLY = TRUE;
-CREATE STREAM IF NOT EXISTS RAW.ACTIVITY_STREAM ON TABLE RAW.ACTIVITY_SCORES APPEND_ONLY = TRUE;
-CREATE STREAM IF NOT EXISTS RAW.PEOPLE_STREAM ON TABLE RAW.PEOPLE APPEND_ONLY = TRUE;
-
 COPY INTO RAW.CASES (case_id, claimant_id, assessor_id, region, assessment_type,
   referral_date, assessment_date, decision_date, dl_points, mob_points,
   dl_decision, mob_decision, mr_flag, mr_overturned, appeal_flag,

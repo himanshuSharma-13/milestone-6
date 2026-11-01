@@ -1,80 +1,36 @@
 USE DATABASE PIP_QUALITY;
 USE WAREHOUSE PIP_WH;
 
--- Latest copy of each case is materialized by a stream-driven task. A rerun of COPY
--- with FORCE=TRUE is still idempotent at the case grain.
-CREATE TABLE IF NOT EXISTS STAGING.CASES_LATEST LIKE RAW.CASES;
-CREATE STREAM IF NOT EXISTS RAW.CASES_STREAM ON TABLE RAW.CASES APPEND_ONLY = TRUE;
-CREATE OR REPLACE TASK STAGING.REFRESH_CASES WAREHOUSE = PIP_WH
-  SCHEDULE = '5 MINUTES'
-  WHEN SYSTEM$STREAM_HAS_DATA('PIP_QUALITY.RAW.CASES_STREAM')
-AS
-MERGE INTO STAGING.CASES_LATEST t
-USING (
-  SELECT case_id,claimant_id,assessor_id,region,assessment_type,
-    referral_date,assessment_date,decision_date,dl_points,mob_points,
-    dl_decision,mob_decision,mr_flag,mr_overturned,appeal_flag,
-    appeal_overturned,status,audit_quality_score,narrative_words,
-    condition_category,source_type,source_file,source_row,loaded_at
-  FROM RAW.CASES_STREAM
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC, source_row DESC) = 1
-) s ON t.case_id = s.case_id
-WHEN MATCHED AND (s.loaded_at > t.loaded_at OR
-  (s.loaded_at = t.loaded_at AND s.source_row >= t.source_row)) THEN UPDATE ALL BY NAME
-WHEN NOT MATCHED THEN INSERT ALL BY NAME;
--- First batch: execute once, then enable the 5-minute schedule.
-EXECUTE TASK STAGING.REFRESH_CASES;
-ALTER TASK STAGING.REFRESH_CASES RESUME;
+-- Each dynamic table keeps one latest row per business key. Snowflake refreshes
+-- changed rows after new COPY loads; no stream, task, or hand-written MERGE is needed.
+CREATE OR REPLACE DYNAMIC TABLE STAGING.CASES_LATEST
+  TARGET_LAG = '1 hour' WAREHOUSE = PIP_WH REFRESH_MODE = INCREMENTAL AS
+SELECT * FROM RAW.CASES
+QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id
+  ORDER BY loaded_at DESC, source_row DESC) = 1;
 
-CREATE TABLE IF NOT EXISTS STAGING.ACTIVITY_LATEST LIKE RAW.ACTIVITY_SCORES;
-CREATE STREAM IF NOT EXISTS RAW.ACTIVITY_STREAM ON TABLE RAW.ACTIVITY_SCORES APPEND_ONLY = TRUE;
-CREATE OR REPLACE TASK STAGING.REFRESH_ACTIVITY WAREHOUSE = PIP_WH
-  SCHEDULE = '5 MINUTES'
-  WHEN SYSTEM$STREAM_HAS_DATA('PIP_QUALITY.RAW.ACTIVITY_STREAM')
-AS
-MERGE INTO STAGING.ACTIVITY_LATEST t
-USING (
- SELECT case_id,component,activity,points,source_file,source_row,loaded_at
- FROM RAW.ACTIVITY_STREAM
- QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id,component,activity ORDER BY loaded_at DESC,source_row DESC)=1
-) s ON t.case_id=s.case_id AND t.component=s.component AND t.activity=s.activity
-WHEN MATCHED THEN UPDATE ALL BY NAME
-WHEN NOT MATCHED THEN INSERT ALL BY NAME;
-EXECUTE TASK STAGING.REFRESH_ACTIVITY;
-ALTER TASK STAGING.REFRESH_ACTIVITY RESUME;
+CREATE OR REPLACE DYNAMIC TABLE STAGING.ACTIVITY_LATEST
+  TARGET_LAG = '1 hour' WAREHOUSE = PIP_WH REFRESH_MODE = INCREMENTAL AS
+SELECT * FROM RAW.ACTIVITY_SCORES
+QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id, component, activity
+  ORDER BY loaded_at DESC, source_row DESC) = 1;
 
-CREATE TABLE IF NOT EXISTS STAGING.PEOPLE_LATEST LIKE RAW.PEOPLE;
-CREATE STREAM IF NOT EXISTS RAW.PEOPLE_STREAM ON TABLE RAW.PEOPLE APPEND_ONLY = TRUE;
-CREATE OR REPLACE TASK STAGING.REFRESH_PEOPLE WAREHOUSE = PIP_WH
-  SCHEDULE = '5 MINUTES'
-  WHEN SYSTEM$STREAM_HAS_DATA('PIP_QUALITY.RAW.PEOPLE_STREAM')
-AS
-MERGE INTO STAGING.PEOPLE_LATEST t
-USING (
- SELECT case_id,claimant_id,claimant_name,ni_number,date_of_birth,
-  health_condition,assessor_id,assessor_name,team_id,region,valid_from,
-  source_file,source_row,loaded_at
- FROM RAW.PEOPLE_STREAM
- QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC,source_row DESC)=1
-) s ON t.case_id=s.case_id
-WHEN MATCHED THEN UPDATE ALL BY NAME
-WHEN NOT MATCHED THEN INSERT ALL BY NAME;
-EXECUTE TASK STAGING.REFRESH_PEOPLE;
-ALTER TASK STAGING.REFRESH_PEOPLE RESUME;
+CREATE OR REPLACE DYNAMIC TABLE STAGING.PEOPLE_LATEST
+  TARGET_LAG = '1 hour' WAREHOUSE = PIP_WH REFRESH_MODE = INCREMENTAL AS
+SELECT * FROM RAW.PEOPLE
+QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id
+  ORDER BY loaded_at DESC, source_row DESC) = 1;
 
 CREATE OR REPLACE VIEW STAGING.ACTIVITY AS
 SELECT case_id, component, activity, TRY_TO_NUMBER(points) AS points
-FROM STAGING.ACTIVITY_LATEST
-QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id, component, activity
-  ORDER BY loaded_at DESC, source_row DESC) = 1;
+FROM STAGING.ACTIVITY_LATEST;
 
 CREATE OR REPLACE VIEW STAGING.PEOPLE AS
 SELECT case_id, claimant_id, claimant_name, ni_number,
   TRY_TO_DATE(date_of_birth) AS date_of_birth, health_condition,
   assessor_id, assessor_name, team_id, region,
   TRY_TO_DATE(valid_from) AS valid_from
-FROM STAGING.PEOPLE_LATEST
-QUALIFY ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY loaded_at DESC, source_row DESC) = 1;
+FROM STAGING.PEOPLE_LATEST;
 
 CREATE OR REPLACE VIEW STAGING.CASES_STANDARDIZED AS
 WITH normalized AS (
@@ -159,7 +115,7 @@ SELECT HASH(assessor_id,team_id) assessor_key, assessor_id, assessor_name, team_
  IFF(LEAD(effective_from) OVER (PARTITION BY assessor_id ORDER BY effective_from) IS NULL,1,0) AS is_current
 FROM versions;
 
--- One fact row per case; two component rows per case in MART.COMPONENT_OUTCOMES.
+-- One fact row per case; MART.AWARD_RATES expands closed cases to two components.
 CREATE OR REPLACE VIEW CORE.FACT_CASE AS
 SELECT c.case_id, HASH(c.claimant_id) AS claimant_key, a.assessor_key,
  HASH(c.region) AS region_key, HASH(c.assessment_type) AS type_key,
