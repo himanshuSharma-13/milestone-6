@@ -115,7 +115,7 @@ SELECT HASH(assessor_id,team_id) assessor_key, assessor_id, assessor_name, team_
  IFF(LEAD(effective_from) OVER (PARTITION BY assessor_id ORDER BY effective_from) IS NULL,1,0) AS is_current
 FROM versions;
 
--- One fact row per case; two component rows per case in MART.COMPONENT_OUTCOMES.
+-- One fact row per case; MART.AWARD_RATES expands closed cases to two components.
 CREATE OR REPLACE VIEW CORE.FACT_CASE AS
 SELECT c.case_id, HASH(c.claimant_id) AS claimant_key, a.assessor_key,
  HASH(c.region) AS region_key, HASH(c.assessment_type) AS type_key,

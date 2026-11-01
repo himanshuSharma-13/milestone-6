@@ -17,7 +17,7 @@ view = st.sidebar.radio("View", ["KPI overview", "At-risk caseload", "Assessor c
 if view == "KPI overview":
     awards = query("SELECT COMPONENT, AWARD_LEVEL, REGION, SUM(CASES) CASES FROM PIP_QUALITY.MART.AWARD_RATES GROUP BY 1,2,3")
     overturn = query("SELECT * FROM PIP_QUALITY.MART.OVERTURN_RATES")
-    quality = query("SELECT AVG(AVG_AUDIT_QUALITY_SCORE) SCORE FROM PIP_QUALITY.MART.ASSESSOR_QUALITY")
+    quality = query("SELECT SUM(AVG_AUDIT_QUALITY_SCORE * CASES) / NULLIF(SUM(CASES),0) SCORE FROM PIP_QUALITY.MART.ASSESSOR_REVIEW")
     c1, c2, c3 = st.columns(3)
     c1.metric("Closed component decisions", int(awards.CASES.sum()))
     c2.metric("MR overturn rate", f"{float(overturn.iloc[0].OVERTURN_RATE):.1%}")
@@ -52,4 +52,4 @@ else:
     sample = query("SELECT SAMPLE_MONTH,CASE_ID,REGION,ASSESSMENT_TYPE,OUTCOME,RISK_FLAG,RATIONALE,RUN_DATE FROM PIP_QUALITY.MART.AUDIT_SAMPLE WHERE SAMPLE_MONTH=DATE_TRUNC('MONTH',CURRENT_DATE())::DATE ORDER BY REGION,ASSESSMENT_TYPE,CASE_ID")
     st.dataframe(sample, use_container_width=True)
     st.subheader("Points versus recorded band exceptions")
-    st.dataframe(query("SELECT * FROM PIP_QUALITY.MART.CONSISTENCY_EXCEPTIONS ORDER BY EXCEPTION_RATE DESC"), use_container_width=True)
+    st.dataframe(query("SELECT * FROM PIP_QUALITY.MART.ASSESSOR_REVIEW ORDER BY EXCEPTION_RATE DESC"), use_container_width=True)

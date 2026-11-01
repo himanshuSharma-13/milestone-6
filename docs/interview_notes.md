@@ -28,7 +28,7 @@
 - **Why quarantine?** Cases with a missing required date, impossible date order, missing activity, or total points that disagree with activity scores should not silently affect KPIs. A recorded award band that disagrees with points stays in CORE as a QA exception because it needs human review.
 - **What is the grain?** `CORE.FACT_CASE` is one valid case per row; `CORE.FACT_ACTIVITY_SCORE` is one case and activity per row. Dimensions describe claimant, assessor, region, assessment type and date.
 - **What is SCD type 2 here?** `CORE.DIM_ASSESSOR` has effective-dated team versions. In the synthetic data assessor A001 changes team; a case joins the assessor version valid on its referral date. This is a small view-based demonstration, not a full production history loader.
-- **Why views for CORE and MART?** They keep the implementation short and reflect the latest staged data. Expensive queries would need materialized tables or dynamic tables at larger scale.
+- **Why six MART views?** The app reuses the KPI, at-risk, assessor review and funnel views; the scorecard feeds model checks. Award rates expand cases into two components inside one query, and a single assessor review view holds both audit scores and band exceptions. Expensive queries would need materialized tables or dynamic tables at larger scale.
 - **Why separate analysis SELECTs?** The app uses the KPI and funnel views repeatedly. Fairness and model evaluation are evidence collected for the submission, so `06` runs those queries once and the outputs should be saved.
 
 ## Results you can quote

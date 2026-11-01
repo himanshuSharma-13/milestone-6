@@ -17,11 +17,10 @@
 | `CORE.DIM_DATE` | `date_key` | calendar date, year, month, month start | Role-playing referral/assessment/decision date |
 | `CORE.FACT_CASE` | `case_id` | dimension keys, points, bands, challenge outcomes, turnaround | One valid case; row policy on team |
 | `CORE.FACT_ACTIVITY_SCORE` | `score_key` | case ID, component, activity, points | One valid activity score |
-| `MART.COMPONENT_OUTCOMES` | `case_id,component` | points, award band | Two closed decision rows per case |
 | `MART.AWARD_RATES` | component, band, region, assessor, type | count, rate, mean points, median/P90 turnaround | Award KPI |
 | `MART.OVERTURN_RATES` | challenge stage | challenged, overturned, rate | MR and appeal KPI |
 | `MART.AT_RISK_CASES` | open case | days open and days to target | Caseload review |
-| `MART.ASSESSOR_QUALITY` | assessor, team | mean QA score and exception rate | Human QA review |
+| `MART.ASSESSOR_REVIEW` | assessor, region | cases, mean audit score, band exception count/rate | Audit quality and consistency review |
 | `MART.FUNNEL` | assessor | observed/expected rate and 95%/99.8% limits | Case-mix adjusted consistency |
 | `sql/06_analysis_checks.sql` | one-off query results | fairness counts/rates, model metrics, calibration | Saved evidence rather than permanent MART views |
 | `MART.AUDIT_SAMPLE` | month, case | strata, risk, seed, rationale, run date | Immutable-by-procedure QA draw |

@@ -4,6 +4,11 @@ USE ROLE ASSESSMENT_ADMIN;
 USE DATABASE PIP_QUALITY;
 USE WAREHOUSE PIP_WH;
 
+-- Assessor-only audit quality KPI from the assessor/region review summary.
+SELECT assessor_id, SUM(cases) cases,
+ SUM(avg_audit_quality_score * cases) / NULLIF(SUM(cases),0) avg_audit_quality_score
+FROM MART.ASSESSOR_REVIEW GROUP BY assessor_id ORDER BY assessor_id;
+
 -- Fairness: compare daily-living award rates with sample sizes.
 -- The one-page fairness note discusses case mix and why a raw gap is not proof of bias.
 WITH base AS (
