@@ -2,7 +2,7 @@
 
 Account: `ap-southeast-7.aws/tp38335`; role: `ACCOUNTADMIN`; warehouse: `PIP_WH`.
 
-The old stream/task objects and obsolete MART views were removed with `sql/migrate_existing_pipeline.sql`. Then `01_pipeline.sql`, `02_marts_and_analytics.sql`, and `03_security.sql` completed in Snowsight. The saved `01` and `02` worksheets were updated to match the repository SQL.
+The old stream/task objects and obsolete MART views were removed with `sql/migrate_existing_pipeline.sql`. Then `01_pipeline.sql`, `02_marts_and_analytics.sql`, and `03_security.sql` completed in Snowsight. The saved `01` and `02` worksheets were updated to match the repository SQL. `06_analysis_checks.sql` was saved as a worksheet and all seven statements completed, including fairness, held-out scorecard metrics, and calibration.
 
 | Check | Snowflake result |
 | --- | ---: |
