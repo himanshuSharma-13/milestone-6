@@ -47,21 +47,6 @@ SELECT assessor_id, region, COUNT(*) cases, SUM(band_exception) exceptions,
  AVG(band_exception) exception_rate
 FROM CORE.FACT_CASE GROUP BY 1,2;
 
-CREATE OR REPLACE VIEW MART.FAIRNESS_COMPARE AS
-WITH base AS (
- SELECT f.case_id, f.assessor_id, f.region, f.assessment_type,
-  f.condition_category, d.age_band,
-  IFF(f.dl_decision='NO_AWARD',0,1) daily_living_awarded
- FROM CORE.FACT_CASE f JOIN CORE.DIM_CLAIMANT d ON f.claimant_key=d.claimant_key
- WHERE f.status='CLOSED'
-)
-SELECT 'ASSESSOR' group_type, assessor_id group_value, COUNT(*) n,
- AVG(daily_living_awarded) award_rate FROM base GROUP BY assessor_id
-UNION ALL SELECT 'REGION',region,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY region
-UNION ALL SELECT 'ASSESSMENT_TYPE',assessment_type,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY assessment_type
-UNION ALL SELECT 'AGE_BAND',age_band,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY age_band
-UNION ALL SELECT 'CONDITION_CATEGORY',condition_category,COUNT(*),AVG(daily_living_awarded) FROM base GROUP BY condition_category;
-
 -- Overall rates are adjusted for observed assessment type and condition mix.
 -- These are descriptive control limits, not assessor performance judgments.
 CREATE OR REPLACE VIEW MART.FUNNEL AS
@@ -98,22 +83,6 @@ SELECT case_id, assessor_id, region, assessment_type, condition_category,
   + IFF(turnaround_days>40,0.10,0)
   + IFF(band_exception=1,0.20,0)) AS risk_probability
 FROM CORE.FACT_CASE WHERE mr_flag=1 OR appeal_flag=1;
-
-CREATE OR REPLACE VIEW MART.MODEL_EVALUATION AS
-WITH heldout AS (
- SELECT *, IFF(risk_probability>=0.25,1,0) prediction
- FROM MART.OVERTURN_SCORECARD WHERE MOD(ABS(HASH(case_id)),5)=0
-)
-SELECT COUNT(*) heldout_n,
- SUM(IFF(prediction=1 AND overturned=1,1,0)) / NULLIF(SUM(prediction),0) precision,
- SUM(IFF(prediction=1 AND overturned=1,1,0)) / NULLIF(SUM(overturned),0) recall,
- AVG(risk_probability) mean_predicted, AVG(overturned) observed_rate
-FROM heldout;
-CREATE OR REPLACE VIEW MART.MODEL_CALIBRATION AS
-SELECT FLOOR(risk_probability*5)/5 AS probability_bucket, COUNT(*) n,
- AVG(risk_probability) mean_predicted, AVG(overturned) observed_rate
-FROM MART.OVERTURN_SCORECARD WHERE MOD(ABS(HASH(case_id)),5)=0
-GROUP BY 1;
 
 CREATE TABLE IF NOT EXISTS MART.AUDIT_SAMPLE (
  sample_month DATE, case_id VARCHAR, region VARCHAR, assessment_type VARCHAR,

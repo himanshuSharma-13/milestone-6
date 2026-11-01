@@ -2,36 +2,38 @@
 
 ## One-minute explanation
 
-"I built a small Snowflake quality analytics platform using fabricated PIP-like cases. A Python script makes three CSV files with 3,200 cases and deliberate data problems. Snowflake loads them into RAW, then streams and scheduled tasks merge the latest records into STAGING. Views standardize labels, recalculate points, and quarantine bad records. CORE is a simple star schema, and MART contains QA KPIs, a stratified audit sample, an assessor funnel, and a transparent review scorecard. I added three roles, masking, a team row filter, and quality checks. I ran the SQL in Snowflake and compared the results with a local Python check. The scorecard supports human review only; it does not decide benefits or assessor performance."
+"I built a small Snowflake quality analytics platform using fabricated PIP-like cases. A Python script makes three CSV files with 3,200 cases and deliberate data problems. COPY loads them into RAW, and three incremental Dynamic Tables keep the latest case, activity and person rows in STAGING. Views standardize labels, recalculate points, and quarantine bad records. CORE is a star schema, and MART contains QA KPIs, a stratified audit sample, an assessor funnel, and a transparent review scorecard. Three roles, masking, a team row filter, and quality checks support governed review. The scorecard supports human review only; it does not decide benefits or assessor performance."
 
 ## Explain the files in order
 
 | File | What it does | Simple explanation |
 |---|---|---|
 | `scripts/generate_data.py` | Creates `cases.csv`, `activity_scores.csv`, and `people.csv` | Makes repeatable fake data, including known defects so quality checks have something to find. |
-| `sql/00_setup_and_ingest.sql` | Creates the warehouse, resource monitor, schemas, stage, RAW tables, streams, and COPY commands | Loads the source files without transforming or losing the original rows. |
-| `sql/01_pipeline.sql` | Creates three merge tasks, standardized and quarantine views, and CORE views | Keeps the latest record for each case/activity/person; checks dates, labels and points before a case reaches CORE. |
-| `sql/02_marts_and_analytics.sql` | Creates KPI views, funnel, scorecard and audit sample procedure | Turns curated cases into review-ready measures and a reproducible sample. |
+| `sql/00_setup_and_ingest.sql` | Creates the warehouse, resource monitor, schemas, stage, RAW tables, and COPY commands | Loads the source files without transforming or losing the original rows. |
+| `sql/01_pipeline.sql` | Creates three incremental Dynamic Tables, standardized and quarantine views, and CORE views | Keeps the latest record for each case/activity/person; checks dates, labels and points before a case reaches CORE. |
+| `sql/02_marts_and_analytics.sql` | Creates reusable KPI views, funnel, scorecard and audit sample procedure | Turns curated cases into review-ready measures and a reproducible sample. |
 | `sql/03_security.sql` | Creates roles, grants, tags, masking and row access policy | Controls who can read identifiers and which team cases a viewer can see. |
 | `sql/04_quality_tests.sql` | Runs source and curated quality queries | Shows that the deliberately bad source data is found and that CORE has zero key quality failures. |
 | `sql/05_role_test.sql` | Runs the same queries under three primary roles | Demonstrates full, masked and team-limited access with real Snowflake results. |
+| `sql/06_analysis_checks.sql` | Runs one-off fairness, precision/recall and calibration SELECTs | Produces evidence without keeping three extra MART views. |
 | `app/streamlit_app.py` | Defines three dashboard views | Presents KPIs, at-risk open cases, assessor funnel and audit sample. The code exists; live app creation/verification remains to do. |
 | `scripts/local_evidence.py` | Recomputes counts, sample and fairness example from CSVs | Provides an independent local comparison for the Snowflake output. |
 
 ## Data flow and key design choices
 
-`CSV → internal stage → RAW → streams + 5-minute merge tasks → STAGING → CORE → MART → Streamlit`
+`CSV → internal stage → RAW → incremental Dynamic Tables → STAGING views → CORE → MART → Streamlit`
 
 - **Why three files?** They separate case decisions, 12 activity scores per case, and person/assessor details. The same case ID connects them.
-- **Why COPY and tasks?** This is a three-file batch. COPY is easy to explain. Streams show new rows; tasks merge them into latest-row tables. `MERGE` makes repeated input safe at the business-key grain.
+- **Why COPY and Dynamic Tables?** This is a three-file batch, so COPY is a simple load step. Each Dynamic Table declaratively selects the latest row for its business key and refreshes incrementally after new RAW loads. No stream offset or scheduled MERGE needs managing. The one-hour target lag is a freshness goal, not a CSV upload interval.
 - **Why quarantine?** Cases with a missing required date, impossible date order, missing activity, or total points that disagree with activity scores should not silently affect KPIs. A recorded award band that disagrees with points stays in CORE as a QA exception because it needs human review.
 - **What is the grain?** `CORE.FACT_CASE` is one valid case per row; `CORE.FACT_ACTIVITY_SCORE` is one case and activity per row. Dimensions describe claimant, assessor, region, assessment type and date.
 - **What is SCD type 2 here?** `CORE.DIM_ASSESSOR` has effective-dated team versions. In the synthetic data assessor A001 changes team; a case joins the assessor version valid on its referral date. This is a small view-based demonstration, not a full production history loader.
 - **Why views for CORE and MART?** They keep the implementation short and reflect the latest staged data. Expensive queries would need materialized tables or dynamic tables at larger scale.
+- **Why separate analysis SELECTs?** The app uses the KPI and funnel views repeatedly. Fairness and model evaluation are evidence collected for the submission, so `06` runs those queries once and the outputs should be saved.
 
 ## Results you can quote
 
-These were observed in the signed-in Snowflake account on 30 October 2026:
+These were observed in the signed-in Snowflake account on 30 October 2026 using the previous stream/task pipeline. Repeat them after the Dynamic Table deployment:
 
 | Check | Result |
 |---|---:|
@@ -61,20 +63,20 @@ The 171 quarantined cases break down locally as 73 points mismatches, 68 missing
 
 ## What is implemented, and what remains
 
-**Implemented and exercised in Snowflake:** staged CSV ingestion; RAW/STAGING/CORE/MART objects; stream/task pipeline; quality and quarantine logic; KPIs; audit sample; funnel; scorecard SQL; roles, masking and row policy; observed case counts and role tests. The public repository contains source code and synthetic data.
+**Implemented in code:** staged CSV ingestion; RAW/STAGING/CORE/MART objects; incremental Dynamic Tables; quality and quarantine logic; KPIs; audit sample; funnel; scorecard SQL; roles, masking and row policy. The prior stream/task version was exercised in Snowflake and produced the checked-in case counts and role-test results. The Dynamic Table version still needs a live rerun of those checks.
 
 **Built in code but not yet verified as a live Snowflake app:** the three-view Streamlit dashboard. Do not say the app is deployed until it has been created and opened successfully in Snowsight.
 
-**Evidence still to collect:** Snowflake exports for quarantine reasons, scorecard evaluation/calibration, fairness, and the complete quality test table. Current local evidence includes some of those calculations, but it is labeled as a Python mirror. The project also has a ten-minute walkthrough outline, not a recorded video.
+**Evidence still to collect:** Snowflake confirmation that all three Dynamic Tables use incremental refresh, a second-load refresh demonstration, rerun quality and role tests, and Snowflake exports for quarantine reasons, scorecard evaluation/calibration, fairness, and the complete quality test table. Current local evidence includes some of those calculations, but it is labeled as a Python mirror. The project also has a ten-minute walkthrough outline, not a recorded video.
 
-**Production limitations:** The type-2 dimension is a view over observed assignments; the audit table is protected from routine redraw by its procedure, but an owner could modify it directly; row access is applied to the exposed case view and should be rechecked for every new downstream object; retention/deletion is documented, not automated; five-minute tasks and X-Small warehouse are a demo cost setting, not measured production sizing. The synthetic scorecard must never make claimant decisions.
+**Production limitations:** The type-2 dimension is a view over observed assignments; the audit table is protected from routine redraw by its procedure, but an owner could modify it directly; row access is applied to the exposed case view and should be rechecked for every new downstream object; retention/deletion is documented, not automated; the one-hour Dynamic Table lag and X-Small warehouse are demo settings, not measured production sizing. The synthetic scorecard must never make claimant decisions.
 
 ## Likely interview questions
 
 **Why not dbt?** "I kept the project in numbered SQL files so each step is visible and easy to run in a trial account. dbt would be a good next step for lineage, tests and deployment when the project grows."
 
-**How is it incremental?** "RAW append-only streams detect new rows, and scheduled tasks merge them into latest-row tables by business key. The downstream views then show the current staged state."
+**How is it incremental?** "When COPY inserts new RAW rows, Snowflake refreshes three Dynamic Tables. Each keeps the latest row per business key using `ROW_NUMBER`, and explicit incremental mode processes changed input. The downstream views read the refreshed state."
 
 **How do you prove governance?** "I used the same query with secondary roles disabled under three primary roles. Admin saw all cases and identifiers, QA saw all cases with masked identifiers, and the team viewer saw only one team's cases and could not query claimant details."
 
-**What would you improve first?** "Deploy and test the dashboard, automate quality assertions and evidence exports, make SCD2 event-driven, add task failure monitoring, and test every downstream view for row-policy leakage."
+**What would you improve first?** "Deploy and test the dashboard, automate quality assertions and evidence exports, make SCD2 event-driven, monitor Dynamic Table refresh lag and failures, and test every downstream view for row-policy leakage."
