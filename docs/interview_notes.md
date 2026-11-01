@@ -33,7 +33,7 @@
 
 ## Results you can quote
 
-These were observed in the signed-in Snowflake account on 30 October 2026 using the previous stream/task pipeline. Repeat them after the Dynamic Table deployment:
+These counts were observed in the signed-in Snowflake account on 30 October 2026 using the previous stream/task pipeline. The Dynamic Table deployment was checked again on 1 November 2026; see `evidence/dynamic_table_deployment.md`:
 
 | Check | Result |
 |---|---:|
@@ -63,7 +63,7 @@ The 171 quarantined cases break down locally as 73 points mismatches, 68 missing
 
 ## What is implemented, and what remains
 
-**Implemented in code:** staged CSV ingestion; RAW/STAGING/CORE/MART objects; incremental Dynamic Tables; quality and quarantine logic; KPIs; audit sample; funnel; scorecard SQL; roles, masking and row policy. The prior stream/task version was exercised in Snowflake and produced the checked-in case counts and role-test results. The Dynamic Table version still needs a live rerun of those checks.
+**Implemented in code and deployed in Snowflake:** staged CSV ingestion; RAW/STAGING/CORE/MART objects; incremental Dynamic Tables; quality and quarantine logic; KPIs; audit sample; funnel; scorecard SQL; roles, masking and row policy. The Dynamic Table version produced 3,029 curated cases and passed the curated quality checks on 1 November 2026. A live Streamlit app and role-specific access checks remain to be verified.
 
 **Built in code but not yet verified as a live Snowflake app:** the three-view Streamlit dashboard. Do not say the app is deployed until it has been created and opened successfully in Snowsight.
 
